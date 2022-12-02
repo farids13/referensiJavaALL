@@ -1,0 +1,45 @@
+// dari pak cris
+
+@ApplicationScoped
+public class TestService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestService.class.getName());
+
+    @Inject
+    @Channel("producer")
+    @OnOverflow(value = OnOverflow.Strategy.BUFFER, bufferSize = 10000)
+    Emitter<String> emitterProducer;
+
+
+    @Incoming("testing")
+    @Blocking
+    public void test(String payload) {
+        persistDB();
+        callDb(payload);
+        emitterProducer.send(UUID.randomUUID().toString());
+    }
+
+    @Transactional
+    public void callDb(String payload) {
+        LOGGER.info("{}", TestModel.findAll().<TestModel>list().stream().map(x -> x.id).collect(Collectors.toList()));
+    }
+
+    @Transactional
+    public void persistDB() {
+        TestModel a = new TestModel();
+        a.persist();
+
+        TestModel b = new TestModel();
+        b.persist();
+
+        TestModel c = new TestModel();
+        c.persist();
+    }
+}
+
+
+Rule Kafka with Hibernate Classic:
+1. Semua hibernate operation harus dalam annotation @Transactional
+2. Emitter tidak boleh masuk ke dalam @Transactional
+3. Emitter selalu diberikan @Inject dan @OnOverflow
+4. @Transactional dapat diberikan @TransactionConfiguration(timeout = 30)
+5. CaptureTransaction juga perlu ditambahkan ke @Incoming y
